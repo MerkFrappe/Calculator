@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ROG Grouped Data Statistics Calculator</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@400;600&family=Teko:wght@500;700&family=Oxanium:wght@600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <header class="rog-hero">
+        <div class="hero-copy">
+            <div class="hero-eyebrow"><i class="fas fa-bolt"></i> Republic of Gamers // Data Forge</div>
+            <h1 class="hero-title">Valkyrie Stats Command</h1>
+            <p class="hero-subtitle">Hardware-grade grouped-data calculations with a product showcase finish.</p>
+            <div class="cta-row">
+                <button id="hero-calc-btn" class="cta-button primary"><i class="fas fa-rocket"></i> Pulse Compute</button>
+                <button id="hero-add-btn" class="cta-button ghost"><i class="fas fa-layer-group"></i> Add Class Interval</button>
+            </div>
+            <div class="hero-specs">
+                <div class="spec-chip">
+                    <span class="spec-label">Engine</span>
+                    <span class="spec-value">ROG Redline</span>
+                </div>
+                <div class="spec-chip">
+                    <span class="spec-label">Realtime</span>
+                    <span class="spec-value">Auto Compute</span>
+                </div>
+                <div class="spec-chip">
+                    <span class="spec-label">Precision</span>
+                    <span class="spec-value">Double</span>
+                </div>
+            </div>
+        </div>
+        <div class="hero-visual">
+            <div class="visual-core">
+                <div class="visual-emblem">ROG</div>
+                <div class="visual-ring"></div>
+                <div class="visual-subtext">Data Blade<span>Grouped Statistics Module</span></div>
+            </div>
+        </div>
+    </header>
+
+    <div class="dashboard-container">
+        <div class="panel left-panel glass-card">
+            <h2 class="panel-title">Data Input</h2>
+            <div class="table-container">
+                <table id="data-table">
+                    <thead>
+                        <tr>
+                            <th>Lower Limit</th>
+                            <th>Upper Limit</th>
+                            <th>Frequency</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="table-controls">
+                <button id="add-row-btn" class="glass-button neon-gradient-border"><i class="fas fa-plus"></i> Add Row</button>
+                <button id="remove-row-btn" class="glass-button neon-gradient-border"><i class="fas fa-minus"></i> Remove Last Row</button>
+            </div>
+
+            <div class="control-group">
+                <div class="auto-compute-toggle floating-neon">
+                    <label class="switch">
+                        <input type="checkbox" id="auto-compute-toggle">
+                        <span class="slider round"></span>
+                    </label>
+                    <span class="toggle-label">Auto Compute</span>
+                </div>
+                <button id="calculate-btn" class="glass-button primary-button neon-gradient-border"><i class="fas fa-calculator"></i> Calculate Statistics</button>
+            </div>
+
+            <div class="control-group bottom-controls">
+                <button id="export-pdf-btn" class="glass-button neon-gradient-border"><i class="fas fa-file-pdf"></i> Export to PDF</button>
+                <button id="reset-table-btn" class="glass-button neon-gradient-border reset-button"><i class="fas fa-redo"></i> Reset Table</button>
+            </div>
+        </div>
+
+        <div class="panel center-panel glass-card">
+            <h2 class="panel-title">Statistical Results</h2>
+            <div id="statistical-results" class="results-grid">
+                <div class="result-card neon-gradient-tile">
+                    <div class="result-label">Mean</div>
+                    <div class="result-value" data-target="mean">0.00</div>
+                    <div class="formula-label">&Sigma;(f * x_mid) / &Sigma;f</div>
+                </div>
+                <div class="result-card neon-gradient-tile">
+                    <div class="result-label">Median</div>
+                    <div class="result-value" data-target="median">0.00</div>
+                    <div class="formula-label">L + (((N/2) - cf_b) / f_m) * w</div>
+                </div>
+                <div class="result-card neon-gradient-tile">
+                    <div class="result-label">Mode</div>
+                    <div class="result-value" data-target="mode">0.00</div>
+                    <div class="formula-label">L + ((f_m - f_1) / (2f_m - f_1 - f_2)) * w</div>
+                </div>
+                <div class="result-card neon-gradient-tile">
+                    <div class="result-label">Variance</div>
+                    <div class="result-value" data-target="variance">0.00</div>
+                    <div class="formula-label">&Sigma;(f * (x_mid - mean)&sup2;) / &Sigma;f</div>
+                </div>
+                <div class="result-card neon-gradient-tile">
+                    <div class="result-label">Std. Deviation</div>
+                    <div class="result-value" data-target="stdDev">0.00</div>
+                    <div class="formula-label">&radic;Variance</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel right-panel glass-card scrollable-panel">
+            <h2 class="panel-title">Computation Breakdown</h2>
+            <div id="breakdown-content">
+                <p class="placeholder-text">Enter data and click 'Calculate' to see step-by-step computations.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
