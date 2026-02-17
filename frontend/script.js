@@ -440,14 +440,77 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function calculateAndDisplayStatistics() {
         const currentData = getTableData();
-        if (currentData && currentData.length > 0 && !currentData.some(d => d.lower === '' || d.upper === '' || d.frequency === '')) {
-            const { results, breakdown } = calculateGroupedStatistics(currentData);
-            displayResults(results);
-            displayBreakdown(breakdown);
-        } else {
+        if (!currentData || currentData.length === 0 || currentData.some(d => d.lower === '' || d.upper === '' || d.frequency === '')) {
             // Clear results and breakdown if data is invalid or incomplete
             displayResults({ mean: 0, median: 0, mode: 0, variance: 0, stdDev: 0 });
             breakdownContent.innerHTML = '<p class="placeholder-text">Enter data and click \'Calculate\' to see step-by-step computations.</p>';
+            return;
+        }
+
+        // Try backend first; fallback to client calculation on failure
+        sendToBackend(currentData).then(serverResult => {
+            if (serverResult) {
+                // Build results object compatible with displayResults
+                const results = {
+                    mean: serverResult.mean,
+                    median: serverResult.median,
+                    mode: serverResult.mode,
+                    variance: serverResult.variance,
+                    stdDev: serverResult.std_dev,
+                };
+
+                // Build breakdown from server dataset and mean
+                const breakdown = { midpoints: [], fx: [], cumulativeFrequency: [], deviationSquared: [], fDeviationSquared: [] };
+                let cum = 0;
+                serverResult.dataset.forEach(d => {
+                    const midpoint = (d.l + d.u) / 2;
+                    const fx = d.f * midpoint;
+                    cum += d.f;
+                    breakdown.midpoints.push({ class: `${d.l}-${d.u}`, midpoint: midpoint.toFixed(2) });
+                    breakdown.fx.push({ class: `${d.l}-${d.u}`, fx: fx.toFixed(2) });
+                    breakdown.cumulativeFrequency.push({ class: `${d.l}-${d.u}`, cf: cum });
+                    const deviationSquared = ((midpoint - serverResult.mean) ** 2).toFixed(2);
+                    const fDeviationSquared = (d.f * Math.pow(midpoint - serverResult.mean, 2)).toFixed(2);
+                    breakdown.deviationSquared.push({ class: `${d.l}-${d.u}`, deviationSquared });
+                    breakdown.fDeviationSquared.push({ class: `${d.l}-${d.u}`, fDeviationSquared });
+                });
+
+                displayResults(results);
+                displayBreakdown(breakdown);
+                return;
+            }
+
+            // Fallback to client-side if server call failed
+            const { results, breakdown } = calculateGroupedStatistics(currentData);
+            displayResults(results);
+            displayBreakdown(breakdown);
+        }).catch(() => {
+            const { results, breakdown } = calculateGroupedStatistics(currentData);
+            displayResults(results);
+            displayBreakdown(breakdown);
+        });
+    }
+
+
+    /**
+     * Send data to backend compute endpoint. Returns parsed JSON on success or null on failure.
+     * @param {Array<Object>} data
+     * @returns {Promise<Object|null>}
+     */
+    async function sendToBackend(data) {
+        try {
+            const payload = { dataset: data.map(d => ({ l: d.lower, u: d.upper, f: d.frequency })) };
+            const resp = await fetch('/api/compute', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            if (!resp.ok) return null;
+            const json = await resp.json();
+            return json;
+        } catch (err) {
+            console.warn('Backend compute failed, falling back to client:', err);
+            return null;
         }
     }
 
