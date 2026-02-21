@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, send_from_directory
 from median import compute_stats
+from median import compute_stats, compute_ungrouped_stats
 import os
 
 app = Flask(__name__, static_folder='frontend', static_url_path='')
@@ -23,6 +24,8 @@ def api_compute():
         return jsonify({'error': 'Missing dataset in request'}), 400
 
     dataset = data['dataset']
+    data_type = data.get('type', 'grouped')
+
     # Expect dataset as list of {l,u,f} or {lower,upper,frequency}
     normalized = []
     for row in dataset:
@@ -33,6 +36,18 @@ def api_compute():
                 normalized.append({'l': float(row['lower']), 'u': float(row['upper']), 'f': float(row['frequency'])})
             else:
                 return jsonify({'error': 'Invalid row format'}), 400
+            if data_type == 'grouped':
+                if 'l' in row and 'u' in row and 'f' in row:
+                    normalized.append({'l': float(row['l']), 'u': float(row['u']), 'f': float(row['f'])})
+                elif 'lower' in row and 'upper' in row and 'frequency' in row:
+                    normalized.append({'l': float(row['lower']), 'u': float(row['upper']), 'f': float(row['frequency'])})
+                else:
+                    return jsonify({'error': 'Invalid row format for grouped data'}), 400
+            else: # ungrouped
+                if 'value' in row and 'frequency' in row:
+                    normalized.append({'value': float(row['value']), 'frequency': float(row['frequency'])})
+                else:
+                    return jsonify({'error': 'Invalid row format for ungrouped data'}), 400
         except Exception:
             return jsonify({'error': 'Invalid numeric values in dataset'}), 400
 
@@ -41,6 +56,16 @@ def api_compute():
         # Convert keys in dataset to simple names for JSON
         out = result.copy()
         out['dataset'] = [{'l': r['l'], 'u': r['u'], 'f': r['f'], 'x': r.get('x')} for r in result['dataset']]
+        if data_type == 'grouped':
+            result = compute_stats(normalized)
+            # Convert keys in dataset to simple names for JSON
+            out = result.copy()
+            out['dataset'] = [{'l': r['l'], 'u': r['u'], 'f': r['f'], 'x': r.get('x')} for r in result['dataset']]
+        else:
+            result = compute_ungrouped_stats(normalized)
+            out = result.copy()
+            # Pass through dataset as is for ungrouped
+            out['dataset'] = result['dataset']
         return jsonify(out)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -49,3 +74,4 @@ def api_compute():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
+
