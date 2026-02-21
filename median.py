@@ -72,6 +72,124 @@ def compute_stats(dataset: List[Dict[str, float]]) -> Dict[str, Any]:
     }
 
 
+def compute_ungrouped_stats(dataset: List[Dict[str, float]]) -> Dict[str, Any]:
+    """Compute ungrouped statistics from dataset list of dicts with keys 'value','frequency'.
+
+    Returns a dict with dataset and computed measures.
+    """
+    # Defensive copy and sort by value
+    data = [dict(row) for row in dataset]
+    data.sort(key=lambda x: x['value'])
+
+    # Expand data based on frequency
+    expanded_data = []
+    for row in data:
+        for _ in range(int(row['frequency'])):
+            expanded_data.append(row['value'])
+
+    n = len(expanded_data)
+    if n == 0:
+        raise ValueError("Total frequency cannot be zero.")
+
+    # Mean
+    mean = sum(expanded_data) / n
+
+    # Median
+    expanded_data.sort()
+    mid = n // 2
+    if n % 2 == 0:
+        median = (expanded_data[mid - 1] + expanded_data[mid]) / 2
+    else:
+        median = expanded_data[mid]
+
+    # Mode
+    from collections import Counter
+    freq_map = Counter(expanded_data)
+    max_freq = max(freq_map.values())
+    modes = [val for val, freq in freq_map.items() if freq == max_freq]
+    mode = modes[0] if len(modes) == 1 else float('nan')  # If multiple modes, return NaN or handle differently
+
+    # Variance and SD
+    variance = sum((x - mean) ** 2 for x in expanded_data) / n
+    sd = math.sqrt(variance)
+
+    return {
+        'dataset': data,
+        'n': n,
+        'mean': mean,
+        'median': median,
+        'mode': mode,
+        'variance': variance,
+        'std_dev': sd,
+    }
+    """Compute grouped statistics from dataset list of dicts with keys 'l','u','f'.
+
+    Returns a dict with augmented dataset and computed measures.
+    """
+    # Defensive copy and sort
+    data = [dict(row) for row in dataset]
+    data.sort(key=lambda x: x['l'])
+
+    n = sum(row['f'] for row in data)
+    if n == 0:
+        raise ValueError("Total frequency cannot be zero.")
+
+    # Midpoints and class width
+    for row in data:
+        row['x'] = (row['l'] + row['u']) / 2
+        row['i'] = row['u'] - row['l']
+
+    # Mean
+    sum_fx = sum(row['f'] * row['x'] for row in data)
+    mean = sum_fx / n
+
+    # Median
+    cum_freq = 0
+    median_class = None
+    cf_before = 0
+    for row in data:
+        prev_cf = cum_freq
+        cum_freq += row['f']
+        if cum_freq >= n / 2:
+            median_class = row
+            cf_before = prev_cf
+            break
+    if median_class is None:
+        raise ValueError("Could not determine median class")
+
+    median = median_class['l'] + (((n / 2) - cf_before) / median_class['f']) * median_class['i']
+
+    # Mode
+    max_f = max(row['f'] for row in data)
+    modal_idx = next(i for i, row in enumerate(data) if row['f'] == max_f)
+    modal_class = data[modal_idx]
+
+    f1 = modal_class['f']
+    f0 = data[modal_idx - 1]['f'] if modal_idx > 0 else 0
+    f2 = data[modal_idx + 1]['f'] if modal_idx < len(data) - 1 else 0
+
+    denom = (f1 - f0) + (f1 - f2)
+    if denom != 0:
+        mode = modal_class['l'] + ((f1 - f0) / denom) * modal_class['i']
+    else:
+        mode = modal_class['x']
+
+    # Variance and SD
+    sum_f_x_mean_sq = sum(row['f'] * (row['x'] - mean) ** 2 for row in data)
+    variance = sum_f_x_mean_sq / n
+    sd = math.sqrt(variance)
+
+    return {
+        'dataset': data,
+        'n': n,
+        'mean': mean,
+        'median': median,
+        'mode': mode,
+        'variance': variance,
+        'std_dev': sd,
+    }
+
+
 def run_stats_test():
     """Original CLI entrypoint preserved for backward compatibility."""
     import pandas as pd
