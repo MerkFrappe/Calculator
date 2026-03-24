@@ -134,11 +134,12 @@ function toggleDataType() {
         if (ungrped) ungrped.classList.remove('primary-button');
     }
     
-    displayResults();
-    
-    // Clear data arrays
+    // Clear data arrays FIRST
     groupedData = [];
     rawData = [];
+    
+    // Re-render table with new dataType BEFORE adding row
+    renderTable();
     
     // Add initial empty row
     addRow();
@@ -147,11 +148,25 @@ function toggleDataType() {
     displayResults({ mean: 0, median: 0, mode: 0, variance: 0, stdDev: 0 });
     breakdownContent.innerHTML = '<p class="placeholder-text">Enter data and click \'Calculate\' to see step-by-step computations.</p>';
 }
+
+/**
+ * Resets the table by clearing data arrays and displaying an empty row
+ */
+function resetTable() {
+    groupedData = [];
+    rawData = [];
+    addRow();
+    displayResults({ mean: 0, median: 0, mode: 0, variance: 0, stdDev: 0 });
+    breakdownContent.innerHTML = '<p class="placeholder-text">Enter data and click \'Calculate\' to see step-by-step computations.</p>';
+}
+
     if (ungrped) ungrped.addEventListener('click', () => {
         if (dataType === 'grouped') toggleDataType();
+        else resetTable();
     });
     if (gpd) gpd.addEventListener('click', () => {
         if (dataType === 'ungrouped') toggleDataType();
+        else resetTable();
     });
 
     /**
