@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportPdfBtn = document.getElementById('export-pdf-btn');
     const heroCalcBtn = document.getElementById('hero-calc-btn');
     const heroAddBtn = document.getElementById('hero-add-btn');
+    const gpd = document.getElementById('toggle-grouped');
+    const ungrped = document.getElementById('toggle-ungrouped');
 
     const meanResult = document.querySelector('[data-target="mean"]');
     const medianResult = document.querySelector('[data-target="median"]');
@@ -20,11 +22,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const headerCol2 = document.querySelector('#data-table thead th:nth-child(2)');
     const headerCol3 = document.querySelector('#data-table thead th:nth-child(3)');
     const breakdownContent = document.getElementById('breakdown-content');
-
+    const errorModal = document.getElementById('custom-error-modal');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const visualRing = document.querySelector('.visual-ring');
+    
     let groupedData = [];
     let rawData = []; // ADD THIS LINE (raw)
     let autoComputeEnabled = false;
     let dataType = 'grouped'; // ADD THIS LINE - 'grouped' or 'ungrouped' (raw)
+
+    // Initialize active state for buttons
+    if (gpd) gpd.classList.add('primary-button');
     // --- Utility Functions ---
 
     /**
@@ -75,6 +83,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return isValid;
     }
 
+    function showError(message) {
+        const msgText = document.getElementById('error-message-text');
+        if (msgText) msgText.textContent = message;
+        if (errorModal) errorModal.classList.remove('modal-hidden');
+    }
+
 	/**
  * Toggles between grouped and ungrouped data input (raw)
  */
@@ -82,17 +96,26 @@ function toggleDataType() {
     // Clear existing data
     if (dataType === 'grouped') {
         dataType = 'ungrouped';
-        dataTypeText.textContent = 'Switch to Grouped';
+        if (dataTypeText) dataTypeText.textContent = 'Switch to Grouped';
+        headerCol1.textContent = 'Value (x)';
+        headerCol2.textContent = 'Frequency (f)';
   
         headerCol3.style.display = 'none'; // Hide third column
 
+        if (gpd) gpd.classList.remove('primary-button');
+        if (ungrped) ungrped.classList.add('primary-button');
     } else {
         dataType = 'grouped';
-        dataTypeText.textContent = 'Switch to Ungrouped';
+        if (dataTypeText) dataTypeText.textContent = 'Switch to Ungrouped';
         headerCol1.textContent = 'Lower Limit';
         headerCol2.textContent = 'Upper Limit';
         headerCol3.style.display = ''; // Show third column
+
+        if (gpd) gpd.classList.add('primary-button');
+        if (ungrped) ungrped.classList.remove('primary-button');
     }
+    
+    displayResults();
     
     // Clear data arrays
     groupedData = [];
@@ -105,6 +128,12 @@ function toggleDataType() {
     displayResults({ mean: 0, median: 0, mode: 0, variance: 0, stdDev: 0 });
     breakdownContent.innerHTML = '<p class="placeholder-text">Enter data and click \'Calculate\' to see step-by-step computations.</p>';
 }
+    if (ungrped) ungrped.addEventListener('click', () => {
+        if (dataType === 'grouped') toggleDataType();
+    });
+    if (gpd) gpd.addEventListener('click', () => {
+        if (dataType === 'ungrouped') toggleDataType();
+    });
 
     /**
      * Gathers data from the table, validates it, and returns an array of objects.
@@ -172,7 +201,12 @@ function getTableData() {
     }
 
     if (hasError) {
-        alert('Please correct the invalid inputs in the table.');
+        showError("Please enter valid numbers in all fields.");
+        
+        const table = document.getElementById('data-table');
+        table.classList.add('shake-animation');
+        setTimeout(() => table.classList.remove('shake-animation'), 500);
+        
         return null;
     }
     return data;
@@ -588,62 +622,83 @@ function getTableData() {
   function displayBreakdown(breakdown, type) {
     let html = '';
 
+    // Check if we have valid data
+    const hasData = type === 'grouped' ? 
+        (breakdown && breakdown.midpoints && breakdown.midpoints.length > 0) : 
+        (breakdown && breakdown.values && breakdown.values.length > 0);
+
+    if (!hasData) {
+        breakdownContent.innerHTML = '<p class="placeholder-text">No valid data to show breakdown.</p>';
+        return;
+    }
+
+    // Start building the table
+    html += `<table class="breakdown-table">
+                <thead>
+                    <tr>`;
+
     if (type === 'grouped') {
-        if (!breakdown || !breakdown.midpoints || breakdown.midpoints.length === 0) {
-            html = '<p class="placeholder-text">No valid data to show breakdown.</p>';
-        } else {
-            html += '<h3>Midpoints (x)</h3><ul>';
-            breakdown.midpoints.forEach(item => html += `<li>Class ${item.class}: ${item.midpoint}</li>`);
-            html += '</ul>';
-
-            html += '<h3>f * x</h3><ul>';
-            breakdown.fx.forEach(item => html += `<li>Class ${item.class}: ${item.fx}</li>`);
-            html += '</ul>';
-
-            html += '<h3>Cumulative Frequency (&lt;cf)</h3><ul>';
-            breakdown.cumulativeFrequency.forEach(item => html += `<li>Class ${item.class}: ${item.cf}</li>`);
-            html += '</ul>';
-
-            if (breakdown.deviationSquared && breakdown.deviationSquared.length > 0) {
-                html += '<h3>(x_mid - Mean)&sup2;</h3><ul>';
-                breakdown.deviationSquared.forEach(item => html += `<li>Class ${item.class}: ${item.deviationSquared}</li>`);
-                html += '</ul>';
-
-                html += '<h3>f * (x_mid - Mean)&sup2;</h3><ul>';
-                breakdown.fDeviationSquared.forEach(item => html += `<li>Class ${item.class}: ${item.fDeviationSquared}</li>`);
-                html += '</ul>';
-            }
+        // Headers for Grouped Data
+        html += `<th>Class</th>
+                 <th>Midpoint (x)</th>
+                 <th>f * x</th>
+                 <th>< cf</th>`;
+        
+        if (breakdown.deviationSquared) {
+            html += `<th>(x - Mean)²</th>
+                     <th>f * (x - Mean)²</th>`;
         }
-    } else { // Ungrouped
-        if (!breakdown || !breakdown.values || breakdown.values.length === 0) {
-            html = '<p class="placeholder-text">No valid data to show breakdown.</p>';
-        } else {
-            html += '<h3>Values (x) and Frequencies (f)</h3><ul>';
-            breakdown.values.forEach(item => html += `<li>Value ${item.value}: Frequency ${item.frequency}</li>`);
-            html += '</ul>';
-
-            html += '<h3>Cumulative Frequency</h3><ul>';
-            breakdown.cumulativeFrequency.forEach(item => html += `<li>Value ${item.value}: ${item.cf}</li>`);
-            html += '</ul>';
-
-            if (breakdown.deviations && breakdown.deviations.length > 0) {
-                html += '<h3>Deviations (x - Mean)</h3><ul>';
-                breakdown.deviations.forEach(item => html += `<li>Value ${item.value}: ${item.deviation}</li>`);
-                html += '</ul>';
-
-                html += '<h3>Squared Deviations (x - Mean)&sup2;</h3><ul>';
-                breakdown.deviationsSquared.forEach(item => html += `<li>Value ${item.value}: ${item.deviationSquared}</li>`);
-                html += '</ul>';
-
-                if (breakdown.fDeviationsSquared) {
-                    html += '<h3>f * (x - Mean)&sup2;</h3><ul>';
-                    breakdown.fDeviationsSquared.forEach(item => html += `<li>Value ${item.value}: ${item.fDeviationSquared}</li>`);
-                    html += '</ul>';
-                }
-            }
+    } else {
+        // Headers for Ungrouped Data
+        html += `<th>Value (x)</th>
+                 <th>Freq (f)</th>
+                 <th>< cf</th>`;
+        
+        if (breakdown.deviations) {
+            html += `<th>(x - Mean)</th>
+                     <th>(x - Mean)²</th>
+                     <th>f * (x - Mean)²</th>`;
         }
     }
-    
+
+    html += `   </tr>
+                </thead>
+                <tbody>`;
+
+    // Populate Rows
+    if (type === 'grouped') {
+        breakdown.midpoints.forEach((item, i) => {
+            html += `<tr>
+                <td>${item.class}</td>
+                <td>${item.midpoint}</td>
+                <td>${breakdown.fx[i].fx}</td>
+                <td>${breakdown.cumulativeFrequency[i].cf}</td>`;
+            
+            if (breakdown.deviationSquared) {
+                html += `<td>${breakdown.deviationSquared[i].deviationSquared}</td>
+                         <td>${breakdown.fDeviationSquared[i].fDeviationSquared}</td>`;
+            }
+            html += '</tr>';
+        });
+    } else {
+        breakdown.values.forEach((item, i) => {
+            html += `<tr>
+                <td>${item.value}</td>
+                <td>${item.frequency}</td>
+                <td>${breakdown.cumulativeFrequency[i].cf}</td>`;
+            
+            if (breakdown.deviations) {
+                html += `<td>${breakdown.deviations[i].deviation}</td>
+                         <td>${breakdown.deviationsSquared[i].deviationSquared}</td>
+                         <td>${breakdown.fDeviationsSquared[i].fDeviationSquared}</td>`;
+            }
+            html += '</tr>';
+        });
+    }
+
+    html += `   </tbody>
+            </table>`;
+
     breakdownContent.innerHTML = html;
 }
 
@@ -696,6 +751,13 @@ function getTableData() {
             return;
         }
 
+        if (visualRing) {
+        visualRing.classList.add('is-processing');
+        }
+        
+        // 3. Perform the actual math while the ring is spinning fast
+        await new Promise(resolve => setTimeout(resolve, 1200));
+        
         const serverResult = await sendToBackend(currentData, dataType);
         if (serverResult) {
             const results = {
@@ -703,7 +765,7 @@ function getTableData() {
                 median: serverResult.median,
                 mode: serverResult.mode,
                 variance: serverResult.variance,
-                stdDev: serverResult.std_dev,
+                stdDev: serverResult.stdDev,
             };
             const breakdown = generateBreakdown(serverResult, dataType);
             displayResults(results);
@@ -720,8 +782,11 @@ function getTableData() {
                 displayBreakdown(breakdown, 'ungrouped');
             }
         }
-    }
 
+        if (visualRing) {
+            visualRing.classList.remove('is-processing');
+        } 
+    }
 
     /**
      * Send data to backend compute endpoint. Returns parsed JSON on success or null on failure.
@@ -750,13 +815,13 @@ function getTableData() {
             });
             if (!resp.ok) {
                 const err = await resp.json();
-                alert(`Server Error: ${err.error || 'Unknown error'}`);
+                showError(`Server Error: ${err.error || 'Unknown error'}`);
                 return null;
             }
             return await resp.json();
         } catch (err) {
             console.error('Backend compute failed:', err);
-            alert('Could not connect to the server. Please check your connection.');
+            showError('Could not connect to the server. Please check your connection.');
             return null;
         }
     }
@@ -793,6 +858,12 @@ function getTableData() {
             }
         });
     }
+
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', () => {
+            if (errorModal) errorModal.classList.add('modal-hidden');
+        });
+    }
 	
     // Add this after the other button event listeners
     if (toggleDataTypeBtn) {
@@ -818,7 +889,7 @@ function getTableData() {
 });
 
     exportPdfBtn.addEventListener('click', () => {
-        alert('Export to PDF functionality is not implemented in this pure JS example. You would typically use a library like jsPDF for this.');
+        showError('Export to PDF functionality is not implemented yet. This feature requires jsPDF integration.');
         // For a pure JS approach, one might try to print the page or generate a very basic text file.
         // window.print(); // This would print the whole page, not just specific results.
     });

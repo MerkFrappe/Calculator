@@ -309,6 +309,12 @@ body::after {
     animation: ringSpin 18s linear infinite;
 }
 
+.visual-ring.is-processing {
+    border-color: rgba(255, 77, 77, 0.8); /* Red border */
+    box-shadow: 0 0 50px rgba(255, 77, 77, 0.6), inset 0 0 30px rgba(255, 77, 77, 0.3);
+    animation-duration: 2s; /* 9x faster than original 18s */
+}
+
 .visual-subtext {
     position: absolute;
     bottom: 16px;
@@ -701,15 +707,26 @@ input:checked + .slider:before {
     overflow-y: auto;
 }
 
+/* Container and Table Core */
 #breakdown-content {
     font-family: var(--font-body);
     line-height: 1.6;
+    color: var(--text-color); /* Assuming you have a text color variable */
 }
 
+.breakdown-table {
+    width: 100%;
+    border-collapse: separate; /* Changed to separate to allow border-radius */
+    border-spacing: 0 8px;    
+    margin-top: 15px;
+    font-size: 14px;
+}
+
+/* Header Styling - Using your Heading Font */
 #breakdown-content h3 {
     font-family: var(--font-heading);
     letter-spacing: 1px;
-    margin: 12px 0 6px;
+    margin: 20px 0 10px;
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -723,19 +740,43 @@ input:checked + .slider:before {
     border-radius: 4px;
 }
 
-#breakdown-content ul {
-    list-style: none;
-    padding-left: 0;
+/* Table Header Cells */
+.breakdown-table th {
+    font-family: var(--font-heading);
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    padding: 12px;
+    text-align: center;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
 }
 
-#breakdown-content ul li {
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 8px;
-    padding: 8px 10px;
-    margin-bottom: 6px;
+/* Table Body Cells - Blending your old 'li' style */
+.breakdown-table td {
+    background: rgba(255, 255, 255, 0.04); /* From your old li */
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 10px;
+    text-align: center;
 }
 
+/* Rounding the corners of each row to mimic the old list items */
+.breakdown-table td:first-child {
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px 0 0 8px;
+}
+
+.breakdown-table td:last-child {
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0 8px 8px 0;
+}
+
+/* Hover effect for better interactivity */
+.breakdown-table tr:hover td {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    transition: all 0.2s ease;
+}
 .placeholder-text {
     text-align: center;
     color: var(--text-secondary);
@@ -819,4 +860,113 @@ input:checked + .slider:before {
     .table-controls {
         flex-direction: column;
     }
+}
+
+/* --- Custom Error Modal --- */
+.modal-hidden {
+    display: none !important;
+}
+
+#custom-error-modal {
+    position: fixed;
+    z-index: 2000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.3s;
+}
+
+.modal-content {
+    background: linear-gradient(135deg, rgba(21, 25, 42, 0.95), rgba(10, 11, 19, 0.95));
+    border: 1px solid var(--math-error);
+    border-radius: 16px;
+    padding: 32px;
+    width: 90%;
+    max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 30px rgba(255, 46, 76, 0.25);
+    text-align: center;
+    position: relative;
+    animation: slideUp 0.3s;
+}
+
+.modal-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 18px;
+    gap: 12px;
+}
+
+.error-icon {
+    font-size: 3.5rem;
+    color: var(--math-error);
+    text-shadow: 0 0 25px rgba(255, 46, 76, 0.5);
+    animation: floatPulse 3s infinite;
+}
+
+.modal-header h3 {
+    font-family: var(--font-heading);
+    color: var(--text-primary);
+    font-size: 2rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin: 0;
+}
+
+#error-message-text {
+    color: var(--text-secondary);
+    font-family: var(--font-body);
+    font-size: 1.15rem;
+    margin-bottom: 28px;
+    line-height: 1.5;
+}
+
+#close-modal-btn {
+    background: var(--math-error);
+    color: white;
+    border: none;
+    padding: 12px 36px;
+    border-radius: 10px;
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    box-shadow: 0 6px 20px rgba(255, 46, 76, 0.3);
+}
+
+#close-modal-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(255, 46, 76, 0.45);
+    background: var(--math-accent-strong);
+}
+
+/* Animation Classes */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { transform: translateY(30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.shake-animation {
+    animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes shake {
+    10%, 90% { transform: translate3d(-1px, 0, 0); }
+    20%, 80% { transform: translate3d(2px, 0, 0); }
+    30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+    40%, 60% { transform: translate3d(4px, 0, 0); }
 }
