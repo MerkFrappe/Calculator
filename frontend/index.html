@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+at<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -50,7 +50,7 @@
         <div class="panel left-panel glass-card">
             <h2 class="panel-title">Data Input</h2>
             <div class="table-container">
-                <button id="toggle-data-type-btn" class="glass-button neon-gradient-border"><i class="fas fa-exchange-alt"></i> <span id="data-type-text">Switch to Ungrouped</span></button>
+      
                 <table id="data-table">
                     <thead>
                         <tr>
@@ -66,6 +66,8 @@
             <div class="table-controls">
                 <button id="add-row-btn" class="glass-button neon-gradient-border"><i class="fas fa-plus"></i> Add Row</button>
                 <button id="remove-row-btn" class="glass-button neon-gradient-border"><i class="fas fa-minus"></i> Remove Last Row</button>
+		
+        	
             </div>
 
             <div class="control-group">
@@ -85,7 +87,15 @@
             </div>
         </div>
 
-        <div class="panel center-panel glass-card">
+        <div class="panel center-panel glass-card"><!-- Inside the .left-panel glass-card -->
+<h2 class="panel-title">Data Input</h2>
+
+<div class="mode-selector">
+    <button id="toggle-grouped" class="glass-button neon-gradient-border">Grouped</button>
+    <button id="toggle-ungrouped" class="glass-button neon-gradient-border">Ungrouped</button>
+</div>
+
+
             <h2 class="panel-title">Statistical Results</h2>
             <div id="statistical-results" class="results-grid">
                 <div class="result-card neon-gradient-tile">
@@ -125,6 +135,17 @@
     </div>
 
     <script src="script.js"></script>
-</body>
 
+    <div id="custom-error-modal" class="modal-hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span class="error-icon">⚠️</span>
+            <h3>Calculation Error</h3>
+        </div>
+        <p id="error-message-text">Please check your inputs.</p>
+        <button id="close-modal-btn">Got it</button>
+    </div>
+</div>
+
+</body>
 </html>

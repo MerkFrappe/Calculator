@@ -30,12 +30,6 @@ def api_compute():
     normalized = []
     for row in dataset:
         try:
-            if 'l' in row and 'u' in row and 'f' in row:
-                normalized.append({'l': float(row['l']), 'u': float(row['u']), 'f': float(row['f'])})
-            elif 'lower' in row and 'upper' in row and 'frequency' in row:
-                normalized.append({'l': float(row['lower']), 'u': float(row['upper']), 'f': float(row['frequency'])})
-            else:
-                return jsonify({'error': 'Invalid row format'}), 400
             if data_type == 'grouped':
                 if 'l' in row and 'u' in row and 'f' in row:
                     normalized.append({'l': float(row['l']), 'u': float(row['u']), 'f': float(row['f'])})
@@ -52,10 +46,6 @@ def api_compute():
             return jsonify({'error': 'Invalid numeric values in dataset'}), 400
 
     try:
-        result = compute_stats(normalized)
-        # Convert keys in dataset to simple names for JSON
-        out = result.copy()
-        out['dataset'] = [{'l': r['l'], 'u': r['u'], 'f': r['f'], 'x': r.get('x')} for r in result['dataset']]
         if data_type == 'grouped':
             result = compute_stats(normalized)
             # Convert keys in dataset to simple names for JSON
@@ -74,4 +64,3 @@ def api_compute():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
-

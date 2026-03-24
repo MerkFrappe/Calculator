@@ -83,9 +83,9 @@ function toggleDataType() {
     if (dataType === 'grouped') {
         dataType = 'ungrouped';
         dataTypeText.textContent = 'Switch to Grouped';
-        headerCol1.textContent = 'Value';
-        headerCol2.textContent = 'Frequency';
+  
         headerCol3.style.display = 'none'; // Hide third column
+
     } else {
         dataType = 'grouped';
         dataTypeText.textContent = 'Switch to Ungrouped';
@@ -258,8 +258,6 @@ function getTableData() {
                 <td><input type="number" class="value-input" value="${row.value}" min="0" step="any"></td>
                 <td><input type="number" class="frequency-input" value="${row.frequency}" min="0" step="any"></td>
                 <td style="display: none;"></td>
-                <td><input type="number" class="value-input" value="${row.value}" min="0" step="any" placeholder="Value"></td>
-                <td><input type="number" class="frequency-input" value="${row.frequency}" min="0" step="any" placeholder="Frequency"></td>
                 <td><button class="remove-row-btn" data-index="${index}"><i class="fas fa-times"></i></button></td>
             `;
             dataTableBody.appendChild(tr);
@@ -322,6 +320,143 @@ function getTableData() {
      * @param {Array<Object>} data An array of objects, each with lower, upper, and frequency.
      * @returns {{results: Object, breakdown: Object}} An object containing the calculated statistics and step-by-step breakdown.
      */
+    function calculateGroupedStatistics(data) {
+        const results = {
+            mean: NaN,
+            median: NaN,
+            mode: NaN,
+            variance: NaN,
+            stdDev: NaN,
+        };
+        const breakdown = {
+            midpoints: [],
+            fx: [],
+            cumulativeFrequency: [],
+            deviationSquared: [],
+            fDeviationSquared: [],
+        };
+
+        // Basic validation for calculation
+        if (!data || data.length === 0 || data.some(d => isNaN(d.lower) || isNaN(d.upper) || isNaN(d.frequency) || d.frequency < 0 || d.lower >= d.upper)) {
+            breakdownContent.innerHTML = '<p class="placeholder-text">Invalid or insufficient data for computation. Please ensure all fields are valid non-negative numbers and lower limit is less than upper limit.</p>';
+            return { results, breakdown };
+        }
+
+        // Sort data by lower limit to ensure correct cumulative frequency and median/mode class finding
+        data.sort((a, b) => a.lower - b.lower);
+
+        let totalFrequency = 0;
+        let sumFx = 0;
+        let currentCumulativeFreq = 0;
+
+        // Step 1: Calculate Midpoints, f*x, and Cumulative Frequency
+        data.forEach((d, i) => {
+            const midpoint = (d.lower + d.upper) / 2;
+            const fx = d.frequency * midpoint;
+
+            totalFrequency += d.frequency;
+            sumFx += fx;
+            currentCumulativeFreq += d.frequency;
+
+            breakdown.midpoints.push({ class: `${d.lower}-${d.upper}`, midpoint: midpoint.toFixed(2) });
+            breakdown.fx.push({ class: `${d.lower}-${d.upper}`, fx: fx.toFixed(2) });
+            breakdown.cumulativeFrequency.push({ class: `${d.lower}-${d.upper}`, cf: currentCumulativeFreq });
+        });
+
+        // Check for total frequency
+        if (totalFrequency === 0) {
+            breakdownContent.innerHTML = '<p class="placeholder-text">Total frequency is zero. Cannot compute statistics.</p>';
+            return { results, breakdown };
+        }
+
+        // Mean
+        results.mean = sumFx / totalFrequency;
+
+        // Median
+        const medianPosition = totalFrequency / 2;
+        let medianClass = null;
+        let cfBeforeMedianClass = 0;
+        let medianClassFreq = 0;
+        let medianClassLowerLimit = 0;
+        let classWidth = 0;
+
+        currentCumulativeFreq = 0; // Reset for median calculation
+        for (let i = 0; i < data.length; i++) {
+            currentCumulativeFreq += data[i].frequency;
+            if (currentCumulativeFreq >= medianPosition) {
+                medianClass = data[i];
+                medianClassLowerLimit = data[i].lower;
+                medianClassFreq = data[i].frequency;
+                classWidth = data[i].upper - data[i].lower;
+                cfBeforeMedianClass = (i > 0) ? breakdown.cumulativeFrequency[i - 1].cf : 0;
+                break;
+            }
+        }
+
+        if (medianClass && medianClassFreq > 0) {
+            results.median = medianClassLowerLimit + (((medianPosition - cfBeforeMedianClass) / medianClassFreq) * classWidth);
+        } else {
+            results.median = NaN;
+        }
+
+        // Mode
+        let maxFreq = 0;
+        let modalClass = null;
+        let modalClassIndex = -1;
+
+        data.forEach((d, i) => {
+            if (d.frequency > maxFreq) {
+                maxFreq = d.frequency;
+                modalClass = d;
+                modalClassIndex = i;
+            }
+        });
+
+        if (modalClass && modalClass.frequency > 0) {
+            const f1 = (modalClassIndex > 0) ? data[modalClassIndex - 1].frequency : 0;
+            const f2 = (modalClassIndex < data.length - 1) ? data[modalClassIndex + 1].frequency : 0;
+            const fm = modalClass.frequency;
+            const L = modalClass.lower;
+            const w = modalClass.upper - modalClass.lower;
+
+            const denominator = (2 * fm - f1 - f2);
+            if (denominator > 0) {
+                results.mode = L + ((fm - f1) / denominator) * w;
+            } else {
+                results.mode = NaN;
+            }
+        } else {
+            results.mode = NaN;
+        }
+
+        // Variance and Standard Deviation (Population Variance)
+        let sumFDeviationSquared = 0;
+        if (!isNaN(results.mean)) { // Only calculate if mean is valid
+            data.forEach(d => {
+                const midpoint = (d.lower + d.upper) / 2;
+                const deviation = midpoint - results.mean;
+                const deviationSquared = deviation * deviation;
+                const fDeviationSquared = d.frequency * deviationSquared;
+                sumFDeviationSquared += fDeviationSquared;
+
+                breakdown.deviationSquared.push({ class: `${d.lower}-${d.upper}`, deviationSquared: deviationSquared.toFixed(2) });
+                breakdown.fDeviationSquared.push({ class: `${d.lower}-${d.upper}`, fDeviationSquared: fDeviationSquared.toFixed(2) });
+            });
+
+            if (totalFrequency > 0) {
+                results.variance = sumFDeviationSquared / totalFrequency; // Population variance
+                results.stdDev = Math.sqrt(results.variance);
+            }
+        }
+
+        return { results, breakdown };
+    }
+
+    /**
+     * Calculates ungrouped Mean, Median, Mode, Variance, and Standard Deviation.
+     * @param {Array<Object>} data An array of objects, each with value and frequency.
+     * @returns {{results: Object, breakdown: Object}} An object containing the calculated statistics and step-by-step breakdown.
+     */
    function calculateUngroupedStatistics(data) {
     const results = {
         mean: NaN,
@@ -336,6 +471,7 @@ function getTableData() {
         cumulativeFrequency: [],
         deviations: [],
         deviationsSquared: [],
+        fDeviationsSquared: [],
     };
 
     if (!data || data.length === 0 || data.some(d => isNaN(d.value) || isNaN(d.frequency) || d.frequency < 0)) {
@@ -402,12 +538,14 @@ function getTableData() {
     data.forEach(d => {
         const deviation = d.value - results.mean;
         const deviationSquared = Math.pow(deviation, 2);
+        const fDeviationSquared = d.frequency * deviationSquared;
         
         breakdown.values.push({ value: d.value, frequency: d.frequency });
         cumulativeFreq += d.frequency;
         breakdown.cumulativeFrequency.push({ value: d.value, cf: cumulativeFreq });
         breakdown.deviations.push({ value: d.value, deviation: deviation.toFixed(2) });
         breakdown.deviationsSquared.push({ value: d.value, deviationSquared: deviationSquared.toFixed(2) });
+        breakdown.fDeviationsSquared.push({ value: d.value, fDeviationSquared: fDeviationSquared.toFixed(2) });
     });
 
     return { results, breakdown };
@@ -496,6 +634,12 @@ function getTableData() {
                 html += '<h3>Squared Deviations (x - Mean)&sup2;</h3><ul>';
                 breakdown.deviationsSquared.forEach(item => html += `<li>Value ${item.value}: ${item.deviationSquared}</li>`);
                 html += '</ul>';
+
+                if (breakdown.fDeviationsSquared) {
+                    html += '<h3>f * (x - Mean)&sup2;</h3><ul>';
+                    breakdown.fDeviationsSquared.forEach(item => html += `<li>Value ${item.value}: ${item.fDeviationSquared}</li>`);
+                    html += '</ul>';
+                }
             }
         }
     }
@@ -519,15 +663,17 @@ function getTableData() {
             });
             return breakdown;
         } else { // ungrouped
-            const breakdown = { values: [], cumulativeFrequency: [], deviations: [], deviationsSquared: [] };
+            const breakdown = { values: [], cumulativeFrequency: [], deviations: [], deviationsSquared: [], fDeviationsSquared: [] };
             let cum = 0;
             serverResult.dataset.forEach(d => {
                 cum += d.frequency;
                 breakdown.values.push({ value: d.value, frequency: d.frequency });
                 breakdown.cumulativeFrequency.push({ value: d.value, cf: cum });
                 const dev = d.value - serverResult.mean;
+                const devSq = dev ** 2;
                 breakdown.deviations.push({ value: d.value, deviation: dev.toFixed(2) });
-                breakdown.deviationsSquared.push({ value: d.value, deviationSquared: (dev ** 2).toFixed(2) });
+                breakdown.deviationsSquared.push({ value: d.value, deviationSquared: devSq.toFixed(2) });
+                breakdown.fDeviationsSquared.push({ value: d.value, fDeviationSquared: (d.frequency * devSq).toFixed(2) });
             });
             return breakdown;
         }
