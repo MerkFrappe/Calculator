@@ -10,6 +10,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const heroAddBtn = document.getElementById('hero-add-btn');
     const gpd = document.getElementById('toggle-grouped');
     const ungrped = document.getElementById('toggle-ungrouped');
+    const solutionsBtn = document.getElementById('show-solutions-btn');
+    const solutionsModal = document.getElementById('solutions-modal');
+    const solutionsBody = document.getElementById('solutions-body');
 
     const meanResult = document.querySelector('[data-target="mean"]');
     const medianResult = document.querySelector('[data-target="median"]');
@@ -24,12 +27,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const breakdownContent = document.getElementById('breakdown-content');
     const errorModal = document.getElementById('custom-error-modal');
     const closeModalBtn = document.getElementById('close-modal-btn');
+    const proofModal = document.getElementById('proof-modal');
+    const proofBody = document.getElementById('proof-body');
+    const closeProofModalBtn = document.getElementById('close-proof-modal-btn');
+    const contextMenu = document.getElementById('custom-context-menu');
     const visualRing = document.querySelector('.visual-ring');
     
     let groupedData = [];
     let rawData = []; // ADD THIS LINE (raw)
     let autoComputeEnabled = false;
     let dataType = 'grouped'; // ADD THIS LINE - 'grouped' or 'ungrouped' (raw)
+
+    let contextMenuTargetIndex = -1;
+    
+    // Store data for proofs
+    let currentProofData = {
+        mean: null,
+        median: null,
+        mode: null,
+        variance: null,
+        stdDev: null
+    };
 
     // Initialize active state for buttons
     if (gpd) gpd.classList.add('primary-button');
@@ -42,6 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {number} end The target number.
      * @param {number} duration The duration of the animation in milliseconds.
      */
+
     function animateNumber(element, start, end, duration) {
         const range = end - start;
         let current = start;
@@ -280,6 +299,12 @@ function getTableData() {
                 <td><button class="remove-row-btn" data-index="${index}"><i class="fas fa-times"></i></button></td>
             `;
             dataTableBody.appendChild(tr);
+            
+            // Add Context Menu Listener
+            tr.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                openContextMenu(e, index);
+            });
         });
     } else {
         if (rawData.length === 0) {
@@ -295,6 +320,12 @@ function getTableData() {
                 <td><button class="remove-row-btn" data-index="${index}"><i class="fas fa-times"></i></button></td>
             `;
             dataTableBody.appendChild(tr);
+            
+            // Add Context Menu Listener
+            tr.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                openContextMenu(e, index);
+            });
         });
     }
 
@@ -347,243 +378,54 @@ function getTableData() {
     }
 }
 
-    // --- Statistics Calculations ---
-
-    /**
-     * Calculates grouped Mean, Median, Mode, Variance, and Standard Deviation.
-     * @param {Array<Object>} data An array of objects, each with lower, upper, and frequency.
-     * @returns {{results: Object, breakdown: Object}} An object containing the calculated statistics and step-by-step breakdown.
-     */
-    function calculateGroupedStatistics(data) {
-        const results = {
-            mean: NaN,
-            median: NaN,
-            mode: NaN,
-            variance: NaN,
-            stdDev: NaN,
-        };
-        const breakdown = {
-            midpoints: [],
-            fx: [],
-            cumulativeFrequency: [],
-            deviationSquared: [],
-            fDeviationSquared: [],
-        };
-
-        // Basic validation for calculation
-        if (!data || data.length === 0 || data.some(d => isNaN(d.lower) || isNaN(d.upper) || isNaN(d.frequency) || d.frequency < 0 || d.lower >= d.upper)) {
-            breakdownContent.innerHTML = '<p class="placeholder-text">Invalid or insufficient data for computation. Please ensure all fields are valid non-negative numbers and lower limit is less than upper limit.</p>';
-            return { results, breakdown };
-        }
-
-        // Sort data by lower limit to ensure correct cumulative frequency and median/mode class finding
-        data.sort((a, b) => a.lower - b.lower);
-
-        let totalFrequency = 0;
-        let sumFx = 0;
-        let currentCumulativeFreq = 0;
-
-        // Step 1: Calculate Midpoints, f*x, and Cumulative Frequency
-        data.forEach((d, i) => {
-            const midpoint = (d.lower + d.upper) / 2;
-            const fx = d.frequency * midpoint;
-
-            totalFrequency += d.frequency;
-            sumFx += fx;
-            currentCumulativeFreq += d.frequency;
-
-            breakdown.midpoints.push({ class: `${d.lower}-${d.upper}`, midpoint: midpoint.toFixed(2) });
-            breakdown.fx.push({ class: `${d.lower}-${d.upper}`, fx: fx.toFixed(2) });
-            breakdown.cumulativeFrequency.push({ class: `${d.lower}-${d.upper}`, cf: currentCumulativeFreq });
-        });
-
-        // Check for total frequency
-        if (totalFrequency === 0) {
-            breakdownContent.innerHTML = '<p class="placeholder-text">Total frequency is zero. Cannot compute statistics.</p>';
-            return { results, breakdown };
-        }
-
-        // Mean
-        results.mean = sumFx / totalFrequency;
-
-        // Median
-        const medianPosition = totalFrequency / 2;
-        let medianClass = null;
-        let cfBeforeMedianClass = 0;
-        let medianClassFreq = 0;
-        let medianClassLowerLimit = 0;
-        let classWidth = 0;
-
-        currentCumulativeFreq = 0; // Reset for median calculation
-        for (let i = 0; i < data.length; i++) {
-            currentCumulativeFreq += data[i].frequency;
-            if (currentCumulativeFreq >= medianPosition) {
-                medianClass = data[i];
-                medianClassLowerLimit = data[i].lower;
-                medianClassFreq = data[i].frequency;
-                classWidth = data[i].upper - data[i].lower;
-                cfBeforeMedianClass = (i > 0) ? breakdown.cumulativeFrequency[i - 1].cf : 0;
-                break;
-            }
-        }
-
-        if (medianClass && medianClassFreq > 0) {
-            results.median = medianClassLowerLimit + (((medianPosition - cfBeforeMedianClass) / medianClassFreq) * classWidth);
-        } else {
-            results.median = NaN;
-        }
-
-        // Mode
-        let maxFreq = 0;
-        let modalClass = null;
-        let modalClassIndex = -1;
-
-        data.forEach((d, i) => {
-            if (d.frequency > maxFreq) {
-                maxFreq = d.frequency;
-                modalClass = d;
-                modalClassIndex = i;
-            }
-        });
-
-        if (modalClass && modalClass.frequency > 0) {
-            const f1 = (modalClassIndex > 0) ? data[modalClassIndex - 1].frequency : 0;
-            const f2 = (modalClassIndex < data.length - 1) ? data[modalClassIndex + 1].frequency : 0;
-            const fm = modalClass.frequency;
-            const L = modalClass.lower;
-            const w = modalClass.upper - modalClass.lower;
-
-            const denominator = (2 * fm - f1 - f2);
-            if (denominator > 0) {
-                results.mode = L + ((fm - f1) / denominator) * w;
-            } else {
-                results.mode = NaN;
-            }
-        } else {
-            results.mode = NaN;
-        }
-
-        // Variance and Standard Deviation (Population Variance)
-        let sumFDeviationSquared = 0;
-        if (!isNaN(results.mean)) { // Only calculate if mean is valid
-            data.forEach(d => {
-                const midpoint = (d.lower + d.upper) / 2;
-                const deviation = midpoint - results.mean;
-                const deviationSquared = deviation * deviation;
-                const fDeviationSquared = d.frequency * deviationSquared;
-                sumFDeviationSquared += fDeviationSquared;
-
-                breakdown.deviationSquared.push({ class: `${d.lower}-${d.upper}`, deviationSquared: deviationSquared.toFixed(2) });
-                breakdown.fDeviationSquared.push({ class: `${d.lower}-${d.upper}`, fDeviationSquared: fDeviationSquared.toFixed(2) });
-            });
-
-            if (totalFrequency > 0) {
-                results.variance = sumFDeviationSquared / totalFrequency; // Population variance
-                results.stdDev = Math.sqrt(results.variance);
-            }
-        }
-
-        return { results, breakdown };
-    }
-
-    /**
-     * Calculates ungrouped Mean, Median, Mode, Variance, and Standard Deviation.
-     * @param {Array<Object>} data An array of objects, each with value and frequency.
-     * @returns {{results: Object, breakdown: Object}} An object containing the calculated statistics and step-by-step breakdown.
-     */
-   function calculateUngroupedStatistics(data) {
-    const results = {
-        mean: NaN,
-        median: NaN,
-        mode: NaN,
-        variance: NaN,
-        stdDev: NaN,
-    };
-    const breakdown = {
-        values: [],
-        frequencies: [],
-        cumulativeFrequency: [],
-        deviations: [],
-        deviationsSquared: [],
-        fDeviationsSquared: [],
-    };
-
-    if (!data || data.length === 0 || data.some(d => isNaN(d.value) || isNaN(d.frequency) || d.frequency < 0)) {
-        return { results, breakdown };
-    }
-
-    // Sort by value
-    data.sort((a, b) => a.value - b.value);
-
-    // Expand data for calculations
-    let expandedData = [];
-    data.forEach(d => {
-        for (let i = 0; i < d.frequency; i++) {
-            expandedData.push(d.value);
-        }
-    });
-
-    const totalFrequency = expandedData.length;
-    
-    if (totalFrequency === 0) {
-        return { results, breakdown };
-    }
-
-    // Mean
-    const sum = expandedData.reduce((acc, val) => acc + val, 0);
-    results.mean = sum / totalFrequency;
-
-    // Median
-    expandedData.sort((a, b) => a - b);
-    const midIndex = Math.floor(totalFrequency / 2);
-    if (totalFrequency % 2 === 0) {
-        results.median = (expandedData[midIndex - 1] + expandedData[midIndex]) / 2;
-    } else {
-        results.median = expandedData[midIndex];
-    }
-
-    // Mode
-    const frequencyMap = new Map();
-    expandedData.forEach(val => {
-        frequencyMap.set(val, (frequencyMap.get(val) || 0) + 1);
-    });
-    
-    let maxFreq = 0;
-    let modes = [];
-    frequencyMap.forEach((freq, val) => {
-        if (freq > maxFreq) {
-            maxFreq = freq;
-            modes = [val];
-        } else if (freq === maxFreq) {
-            modes.push(val);
-        }
-    });
-    
-    results.mode = modes.length === 1 ? modes[0] : NaN;
-
-    // Variance and Standard Deviation
-    const squaredDeviations = expandedData.map(val => Math.pow(val - results.mean, 2));
-    const sumSquaredDeviations = squaredDeviations.reduce((acc, val) => acc + val, 0);
-    results.variance = sumSquaredDeviations / totalFrequency;
-    results.stdDev = Math.sqrt(results.variance);
-
-    // Build breakdown
-    let cumulativeFreq = 0;
-    data.forEach(d => {
-        const deviation = d.value - results.mean;
-        const deviationSquared = Math.pow(deviation, 2);
-        const fDeviationSquared = d.frequency * deviationSquared;
+    // --- Context Menu Logic ---
+    function openContextMenu(e, index) {
+        if (!contextMenu) return;
         
-        breakdown.values.push({ value: d.value, frequency: d.frequency });
-        cumulativeFreq += d.frequency;
-        breakdown.cumulativeFrequency.push({ value: d.value, cf: cumulativeFreq });
-        breakdown.deviations.push({ value: d.value, deviation: deviation.toFixed(2) });
-        breakdown.deviationsSquared.push({ value: d.value, deviationSquared: deviationSquared.toFixed(2) });
-        breakdown.fDeviationsSquared.push({ value: d.value, fDeviationSquared: fDeviationSquared.toFixed(2) });
+        contextMenuTargetIndex = index;
+        contextMenu.classList.remove('context-menu-hidden');
+        
+        // Position menu
+        const menuWidth = contextMenu.offsetWidth || 160;
+        const menuHeight = contextMenu.offsetHeight || 80;
+        let x = e.pageX;
+        let y = e.pageY;
+
+        // Check boundaries
+        if (x + menuWidth > window.innerWidth) x -= menuWidth;
+        if (y + menuHeight > window.innerHeight) y -= menuHeight;
+
+        contextMenu.style.left = `${x}px`;
+        contextMenu.style.top = `${y}px`;
+    }
+
+    function closeContextMenu() {
+        if (contextMenu) contextMenu.classList.add('context-menu-hidden');
+        contextMenuTargetIndex = -1;
+    }
+
+    // Global click to close context menu
+    window.addEventListener('click', closeContextMenu);
+    
+    // Handle Context Menu Actions
+    const contextActions = document.querySelectorAll('.context-menu-item');
+    contextActions.forEach(item => {
+        item.addEventListener('click', () => {
+            const action = item.getAttribute('data-action');
+            if (action === 'delete') {
+                removeRow(contextMenuTargetIndex);
+            } else if (action === 'clear') {
+                // Re-initialize specific row
+                if (dataType === 'grouped') groupedData[contextMenuTargetIndex] = { lower: '', upper: '', frequency: '' };
+                else rawData[contextMenuTargetIndex] = { value: '', frequency: '' };
+                renderTable();
+                if (autoComputeEnabled) calculateAndDisplayStatistics();
+            }
+            closeContextMenu();
+        });
     });
 
-    return { results, breakdown };
-}
+    
 
     // --- Display Functions ---
 
@@ -788,6 +630,52 @@ function getTableData() {
         } 
     }
 
+    // --- Proof Rendering ---
+    function renderProof(type) {
+        if (!currentProofData[type]) {
+            proofBody.innerHTML = '<p>No data available for this calculation yet.</p>';
+            return;
+        }
+
+        let html = '';
+        const data = currentProofData[type];
+
+        if (type === 'mean') {
+            html = `
+                <div class="proof-step"><strong>Formula:</strong> &mu; = &Sigma;(f &middot; x) / n</div>
+                <div class="proof-step"><strong>Substitution:</strong> &mu; = ${data.sumFx.toFixed(2)} / ${data.n}</div>
+                <div class="proof-step"><strong>Result:</strong> ${data.result.toFixed(4)}</div>
+            `;
+        } else if (type === 'median') {
+            html = `
+                <div class="proof-step"><strong>Formula:</strong> L + [ (n/2 - cf_b) / f_m ] * w</div>
+                <div class="proof-step"><strong>Values:</strong> L=${data.L}, n=${data.n}, cf_b=${data.cf_b}, f_m=${data.f_m}, w=${data.w}</div>
+                <div class="proof-step"><strong>Substitution:</strong> ${data.L} + [ (${data.n}/2 - ${data.cf_b}) / ${data.f_m} ] * ${data.w.toFixed(2)}</div>
+                <div class="proof-step"><strong>Result:</strong> ${data.result.toFixed(4)}</div>
+            `;
+        } else if (type === 'mode') {
+            html = `
+                <div class="proof-step"><strong>Formula:</strong> L + [ (f_m - f_1) / (2f_m - f_1 - f_2) ] * w</div>
+                <div class="proof-step"><strong>Values:</strong> L=${data.L}, f_m=${data.fm}, f_1=${data.f1}, f_2=${data.f2}, w=${data.w}</div>
+                <div class="proof-step"><strong>Substitution:</strong> ${data.L} + [ (${data.fm} - ${data.f1}) / (2(${data.fm}) - ${data.f1} - ${data.f2}) ] * ${data.w.toFixed(2)}</div>
+                <div class="proof-step"><strong>Result:</strong> ${data.result.toFixed(4)}</div>
+            `;
+        } else if (type === 'variance') {
+            html = `
+                <div class="proof-step"><strong>Formula:</strong> &sigma;&sup2; = &Sigma;(f &middot; (x - &mu;)&sup2;) / n</div>
+                <div class="proof-step"><strong>Substitution:</strong> ${data.sumSq.toFixed(2)} / ${data.n}</div>
+                <div class="proof-step"><strong>Result:</strong> ${data.result.toFixed(4)}</div>
+            `;
+        } else if (type === 'stdDev') {
+            html = `
+                <div class="proof-step"><strong>Formula:</strong> &sigma; = &radic;(&sigma;&sup2;)</div>
+                <div class="proof-step"><strong>Substitution:</strong> &radic;(${data.variance.toFixed(4)})</div>
+                <div class="proof-step"><strong>Result:</strong> ${data.result.toFixed(4)}</div>
+            `;
+        }
+        proofBody.innerHTML = html;
+    }
+
     /**
      * Send data to backend compute endpoint. Returns parsed JSON on success or null on failure.
      * @param {Array<Object>} data
@@ -825,6 +713,7 @@ function getTableData() {
             return null;
         }
     }
+    
 
     // --- Event Listeners ---
 
@@ -832,12 +721,31 @@ function getTableData() {
     removeRowBtn.addEventListener('click', () => removeRow()); // Remove last row by default
     calculateBtn.addEventListener('click', calculateAndDisplayStatistics);
 
+    
     autoComputeToggle.addEventListener('change', (event) => {
         autoComputeEnabled = event.target.checked;
         if (autoComputeEnabled) {
             calculateAndDisplayStatistics();
         }
     });
+
+    // Add listeners to all View Proof buttons
+    document.body.addEventListener('click', (e) => {
+        const btn = e.target.closest('.view-proof-btn');
+        if (btn) {
+            const type = btn.getAttribute('data-type');
+            renderProof(type);
+            if (proofModal) proofModal.classList.remove('modal-hidden');
+        }
+    });
+
+    if (closeProofModalBtn) {
+        closeProofModalBtn.addEventListener('click', () => {
+            if (proofModal) proofModal.classList.add('modal-hidden');
+        });
+    }
+
+    // Remove old solutionsBtn listener if it exists or replace logic above
 
     if (heroCalcBtn) {
         heroCalcBtn.addEventListener('click', () => {

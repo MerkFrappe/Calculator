@@ -970,3 +970,79 @@ input:checked + .slider:before {
     30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
     40%, 60% { transform: translate3d(4px, 0, 0); }
 }
+
+/* --- View Proof Button & Modal --- */
+.view-proof-btn {
+    margin-top: 1rem;
+    width: 100%;
+    padding: 0.6rem 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.7);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 4px;
+}
+
+.view-proof-btn:hover {
+    background: rgba(0, 210, 255, 0.1);
+    border-color: #00d2ff;
+    color: #ffffff;
+    box-shadow: 0 0 12px rgba(0, 210, 255, 0.4);
+}
+
+.view-proof-btn:active {
+    transform: scale(0.98);
+}
+
+#proof-modal {
+    position: fixed;
+    z-index: 2000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(5px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.3s;
+}
+
+.proof-step {
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 3px solid var(--math-blue);
+    padding: 12px;
+    margin-bottom: 12px;
+    text-align: left;
+}
+
+.proof-step strong {
+    color: var(--math-blue);
+    display: block;
+    margin-bottom: 4px;
+}
+
+#close-proof-modal-btn {
+    background: var(--math-blue);
+    color: var(--math-black);
+    border: none;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-family: var(--font-heading);
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 10px;
+}

@@ -1,4 +1,4 @@
-at<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -102,37 +102,53 @@ at<!DOCTYPE html>
                     <div class="result-label">Mean</div>
                     <div class="result-value" data-target="mean">0.00</div>
                     <div class="formula-label">&Sigma;(f * x_mid) / &Sigma;f</div>
+                    <button class="view-proof-btn" data-type="mean">
+                        <i class="fas fa-scroll"></i> View Proof
+                    </button>
                 </div>
                 <div class="result-card neon-gradient-tile">
                     <div class="result-label">Median</div>
                     <div class="result-value" data-target="median">0.00</div>
                     <div class="formula-label">L + (((N/2) - cf_b) / f_m) * w</div>
+                    <button class="view-proof-btn" data-type="median">
+                        <i class="fas fa-scroll"></i> View Proof
+                    </button>
                 </div>
                 <div class="result-card neon-gradient-tile">
                     <div class="result-label">Mode</div>
                     <div class="result-value" data-target="mode">0.00</div>
                     <div class="formula-label">L + ((f_m - f_1) / (2f_m - f_1 - f_2)) * w</div>
+                    <button class="view-proof-btn" data-type="mode">
+                        <i class="fas fa-scroll"></i> View Proof
+                    </button>
                 </div>
                 <div class="result-card neon-gradient-tile">
                     <div class="result-label">Variance</div>
                     <div class="result-value" data-target="variance">0.00</div>
                     <div class="formula-label">&Sigma;(f * (x_mid - mean)&sup2;) / &Sigma;f</div>
+                    <button class="view-proof-btn" data-type="variance">
+                        <i class="fas fa-scroll"></i> View Proof
+                    </button>
                 </div>
                 <div class="result-card neon-gradient-tile">
                     <div class="result-label">Std. Deviation</div>
                     <div class="result-value" data-target="stdDev">0.00</div>
                     <div class="formula-label">&radic;Variance</div>
+                    <button class="view-proof-btn" data-type="stdDev">
+                        <i class="fas fa-scroll"></i> View Proof
+                    </button>
                 </div>
             </div>
         </div>
-
-        <div class="panel right-panel glass-card scrollable-panel">
+                <div class="panel right-panel glass-card scrollable-panel">
             <h2 class="panel-title">Computation Breakdown</h2>
             <div id="breakdown-content">
                 <p class="placeholder-text">Enter data and click 'Calculate' to see step-by-step computations.</p>
             </div>
+     
         </div>
     </div>
+       
 
     <script src="script.js"></script>
 
@@ -144,6 +160,17 @@ at<!DOCTYPE html>
         </div>
         <p id="error-message-text">Please check your inputs.</p>
         <button id="close-modal-btn">Got it</button>
+    </div>
+</div>
+
+<!-- Proof Modal -->
+<div id="proof-modal" class="modal-hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-calculator"></i> Calculation Proof</h3>
+        </div>
+        <div id="proof-body" class="proof-container"></div>
+        <button id="close-proof-modal-btn">Close</button>
     </div>
 </div>
 
